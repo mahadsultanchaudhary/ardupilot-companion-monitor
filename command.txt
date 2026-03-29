@@ -1,0 +1,7 @@
+How to use it:
+Make it executable:
+Run this in your terminal once:
+chmod +x start_sim.sh
+
+Run it:
+./start_sim.sh

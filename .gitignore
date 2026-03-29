@@ -1,0 +1,11 @@
+# Ignore the virtual environment
+.venv/
+venv/
+__pycache__/
+
+# Ignore temporary data and logs (Keep the repo clean)
+flight_data.csv
+*.log
+
+# Ignore OS-specific files
+.DS_Store
