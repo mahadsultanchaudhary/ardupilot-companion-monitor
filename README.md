@@ -20,9 +20,35 @@ The project is built with a modular approach, separating telemetry, safety logic
 
 ---
 
+🏗️ Technical Architecture
+This system follows a decoupled watchdog architecture, ensuring that the health monitor operates independently of the flight simulation to provide reliable failsafe triggers.
 
+1. System Flow Overview
+The integration consists of three primary layers working in synchronization:
 
+Orchestration Layer (start_sim.sh): A high-level bash controller that initializes the ArduPilot SITL environment, manages MAVProxy port routing, and spawns the background monitoring processes.
 
+Monitoring Layer (failsafe.py): A Python-based "Watchdog" that taps into the system's hardware via psutil. It evaluates real-time CPU load and thermal metrics against predefined safety thresholds.
+
+Communication Layer (MAVLink): Utilizing pymavlink, the monitor sends heartbeat packets and status updates. When a critical threshold is breached, it issues a MAV_CMD_DO_SET_MODE command to the Flight Controller to trigger an emergency RTL (Return to Launch).
+
+2. Logic & Data Flow
+graph TD
+    A[start_sim.sh] --> B[SITL Flight Controller]
+    A --> C[Python Health Monitor]
+    C -->|GET Hardware Stats| D(CPU/RAM/Temp)
+    D -->|Threshold Breach| C
+    C -->|MAVLink: SET_MODE RTL| B
+    C -->|Log Data| E[(flight_data.csv)]
+
+3. Superior Reliability Features
+Unlike standard monitoring scripts, this implementation features:
+
+Asynchronous Logging: Telemetry recording to flight_data.csv happens non-blockingly, ensuring that disk I/O latency never delays a critical failsafe command.
+
+Automated Environmental Setup: The bash script handles the heavy lifting of port mapping (127.0.0.1:14550), meaning the user never has to manually "handshake" the companion computer with the drone.
+
+Stress-Test Ready: Includes a stress.py utility to intentionally spike system load, allowing for deterministic verification of the failsafe logic without risking physical hardware.
 
 
 
@@ -54,6 +80,9 @@ Ensure you have ArduPilot SITL installed and compiled on your Linux machine.
 
 ### 2. Launch the System
 Use the automated bash script to setup the environment and start the sitl simulation:
+No manual SITL configuration required; the script handles environment variables and port forwarding automatically.
+My bash cammand will start the whole system for you no need for manually typing to start sitl simulation  it will manage 
+it for you including take off for sitl drone and python mavlink based heart beat telemetry , It will also create csv file that records temperature , cpu power consumption and status as well , best part bash script will handle it for you no need to manually type command for them at all
 ```bash
 chmod +x start_sim.sh
 ./start_sim.sh
@@ -63,14 +92,10 @@ To simulate a hardware failure and verify the RTL trigger, run the stress test:
 Bash
 python stress.py
 
-📊 Telemetry Data Example
-The flight_data.csv provides insights into the system's health during flight
-Timestamp, CPU Load (%),Temperature (°C),System Status
-14:20:05, 12.4%,         45.2°C,          NORMAL
-14:20:10, 99.1%,         48.5°C,         CPU WARNING
-14:20:15, 99.5%,         51.2°C,         FAILSAFE_TRIGGERED
-🛠️ Installation & Requirements
-Python 3.8+
+Timestamp,CPU Load (%),Temperature (°C),System Status
+14:20:05,  12.4%,         45.2°C,          NORMAL
+14:20:10,  99.1%,         48.5°C,        "<span style=""color:orange"">CPU WARNING</span>"
+14:20:15,  99.5%,         51.2°C,          "<span style=""color:red"">FAILSAFE_TRIGGERED</span>"
 
 pymavlink
 
@@ -89,6 +114,6 @@ Bash
 pip install pymavlink psutil
 👨‍💻 Author
 Mahad Sultan Chaudhary
-This project is demo for gsoc 2026 compeition
+This project is demo for gsoc Ardupilot Real-Time Companion-Computer Health Monitoring & Failsafe 2026 compeition
 
 GitHub: @mahadsultanchaudhary
