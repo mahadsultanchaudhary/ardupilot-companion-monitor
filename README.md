@@ -20,21 +20,63 @@ The project is built with a modular approach, separating telemetry, safety logic
 
 ---
 
-[ stress.py ]  --- (Simulates Load) ---> [ CPU / RAM / TEMP ]
-                                               │
-                                               ▼
-[ sim_companion.py ] <─── (psutil) ─── [ OS System Stats ]
-       │
-       ├─> [ logger.py ] ───────> (Writes to flight_data.csv)
-       │
-       └─> [ failsafe.py ] ─────> (Logic: If Load > 95% for 5s)
-               │
-               └─── MAVLink (UDP:14550) ───┐
-                                           ▼
-[ ArduPilot SITL ] <── (Set Mode: RTL) ── [ MAVProxy / Drone ]
-       │
-       └─> [ STATUSTEXT ] ───> (GCS: "FAILSAFE: CPU OVERLOAD")
-       🛰️ Data Flow Explanation
+┌───────────────────────────────────────────────────────┐
+│              Host Machine (Companion SIM)             │
+│                                                       │
+│ ┌────────────┐                                        │
+│ │ stress.py  │──(Injects math load)──┐                │
+│ │ Test Tool  │                       │                │
+│ └────────────┘                       ▼                │
+│                             ┌─────────────────┐       │
+│                             │   OS System     │       │
+│                             │ (CPU / TEMP /   │       │
+│                             │  RAM / DISK)    │       │
+│                             └───────┬─────────┘       │
+│                                     │ (psutil)        │
+│ ┌───────────────────────────────────▼───────────────┐ │
+│ │                  sim_companion.py                 │ │
+│ │                   (The Brain)                     │ │
+│ │                                                   │ │
+│ │   (Every 1s)                                      │ │
+│ │ ┌───────────┐      ┌───────────────┐              │ │
+│ │ │ logger.py │<─────┤ failsafe.py   │              │ │
+│ │ │ (BlackBox)│(Log) │ (SafetyLogic) │              │ │
+│ │ │           │<──┐  │ ┌───────────┐ │              │ │
+│ │ └─────┬─────┘   │  │ │ 5-second  │ │              │ │
+│ │       │         │  │ │ Temp Filter│ │              │ │
+│ │       ▼         │  │ └─────┬─────┘ │              │ │
+│ │ flight_data.csv └──┤       │       │              │ │
+│ │ (Beautiful Units)  │       ▼       │              │ │
+│ │                    │   MAV_CMD_    │              │ │
+│ │                    │   DO_SET_MODE │              │ │
+│ │                    │   (RTL)       │              │ │
+│ │                    └───────┬───────┘              │ │
+│ │                            │                      │ │
+│ │          MAVLink: NAMED_VALUE_FLOAT, COMMAND_LONG │ │
+│ └────────────────────────────┬──────────────────────┘ │
+└──────────────────────────────┼────────────────────────┘
+                               │ MAVLink (UDP:14550)
+┌──────────────────────────────▼────────────────────────┐
+│               ArduPilot SITL / Drone                  │
+│                                                       │
+│ - Receives: MAV_CMD_DO_SET_MODE (RTL)                 │
+│ - Publishes: STATUSTEXT (Error Alerts)                │
+│ - Executes: Return to Launch (Drone comes home)       │
+└──────────────────────────────┬────────────────────────┘
+                               │
+            USB / Telemetry Radio (Simulated)
+                               │
+┌──────────────────────────────▼────────────────────────┐
+│         GCS (Mission Planner / QGroundControl)        │
+│                                                       │
+│ - Messages Tab: "FAILSAFE: CPU OVERLOAD"              │
+│ - Status Panel: Vehicle switches to RTL               │
+│ - Live Plot: CPU/TEMP (NAMED_VALUE_FLOAT)             │
+└───────────────────────────────────────────────────────┘
+
+
+
+
 
 
 Data Acquisition: sim_companion.py uses the psutil library to poll the host machine's hardware metrics every 1 second.
@@ -76,10 +118,10 @@ python stress.py
 
 📊 Telemetry Data Example
 The flight_data.csv provides insights into the system's health during flight
-Timestamp,CPU Load (%),Temperature (°C),System Status
-14:20:05,12.4%,45.2°C,NORMAL
-14:20:10,99.1%,48.5°C,CPU WARNING
-14:20:15,99.5%,51.2°C,FAILSAFE_TRIGGERED
+Timestamp, CPU Load (%),Temperature (°C),System Status
+14:20:05, 12.4%,         45.2°C,          NORMAL
+14:20:10, 99.1%,         48.5°C,         CPU WARNING
+14:20:15, 99.5%,         51.2°C,         FAILSAFE_TRIGGERED
 🛠️ Installation & Requirements
 Python 3.8+
 
