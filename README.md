@@ -1,0 +1,99 @@
+# 🛸 ArduPilot Companion Monitor & Failsafe System
+
+![Python](https://img.shields.io/badge/python-3.8+-blue.svg)
+![ArduPilot](https://img.shields.io/badge/ArduPilot-SITL-orange.svg)
+![MAVLink](https://img.shields.io/badge/MAVLink-2.0-green.svg)
+![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)
+
+A modular companion computer simulation for ArduPilot SITL. This system monitors real-time hardware health (CPU Load and Temperature) and executes an intelligent **RTL (Return to Launch)** failsafe when critical thresholds are exceeded.
+
+---
+
+## 🧠 System Architecture
+
+The project is built with a modular approach, separating telemetry, safety logic, and logging to ensure high reliability—similar to real-world flight software.
+
+- **`sim_companion.py`**: The central "Brain" that manages MAVLink communication and coordinates mission execution.
+- **`failsafe.py`**: The "Safety Officer" that implements temporal filtering (5-second rule) for CPU spikes to prevent false positives.
+- **`logger.py`**: The "Black Box" that records high-resolution CSV flight data with unit formatting (°C/%).
+- **`stress.py`**: A dedicated testing tool designed to simulate 100% CPU load across all cores to verify failsafe triggers.
+
+---
+
+[ stress.py ]  --- (Simulates Load) ---> [ CPU / RAM / TEMP ]
+                                               │
+                                               ▼
+[ sim_companion.py ] <─── (psutil) ─── [ OS System Stats ]
+       │
+       ├─> [ logger.py ] ───────> (Writes to flight_data.csv)
+       │
+       └─> [ failsafe.py ] ─────> (Logic: If Load > 95% for 5s)
+               │
+               └─── MAVLink (UDP:14550) ───┐
+                                           ▼
+[ ArduPilot SITL ] <── (Set Mode: RTL) ── [ MAVProxy / Drone ]
+       │
+       └─> [ STATUSTEXT ] ───> (GCS: "FAILSAFE: CPU OVERLOAD")
+       🛰️ Data Flow Explanation
+
+
+Data Acquisition: sim_companion.py uses the psutil library to poll the host machine's hardware metrics every 1 second.
+
+Monitoring & Logging: These metrics are passed to logger.py, which formats the data with units (°C/%) and appends it to a persistent CSV "Black Box" file.
+
+Safety Evaluation: The FailsafeManager in failsafe.py evaluates the data against predefined thresholds.
+
+Temporal Filtering: To prevent accidental triggers from momentary spikes, the system requires the CPU to remain above the threshold for a continuous 5-second window before acting.
+
+Command Execution: Once the 5-second timer expires, the script sends a MAV_CMD_DO_SET_MODE command via MAVLink to the SITL instance, forcing the drone into RTL (Return to Launch) mode and broadcasting a high-priority warning message.
+
+
+## ✨ Key Features
+
+- ✅ **Intelligent Failsafe**: Triggers RTL if CPU > 95% for 5+ seconds or Temperature > 75°C.
+- ✅ **Automated Deployment**: `start_sim.sh` handles virtual environment setup and ArduPilot SITL launching.
+- ✅ **Mission Automation**: Executes flight commands (Mode, Arm, Takeoff) via `my_flight.txt`.
+- ✅ **Clean Telemetry**: Sends custom MAVLink `NAMED_VALUE_FLOAT` packets visible in Mission Planner/QGC.
+- ✅ **Professional Logging**: Generates `flight_data.csv` with precise timestamps and unit-labeled columns.
+
+---
+
+## 🚀 Quick Start
+
+### 1. Prerequisites
+Ensure you have ArduPilot SITL installed and compiled on your Linux machine.
+
+### 2. Launch the System
+Use the automated bash script to setup the environment and start the sitl simulation:
+```bash
+chmod +x start_sim.sh
+./start_sim.sh
+4. Test the Failsafe
+To simulate a hardware failure and verify the RTL trigger, run the stress test:
+
+Bash
+python stress.py
+
+📊 Telemetry Data Example
+The flight_data.csv provides insights into the system's health during flight
+Timestamp,CPU Load (%),Temperature (°C),System Status
+14:20:05,12.4%,45.2°C,NORMAL
+14:20:10,99.1%,48.5°C,CPU WARNING
+14:20:15,99.5%,51.2°C,FAILSAFE_TRIGGERED
+🛠️ Installation & Requirements
+Python 3.8+
+
+pymavlink
+
+psutil
+
+ArduPilot SITL
+
+Install dependencies manually if not using the shell script:
+
+Bash
+pip install pymavlink psutil
+👨‍💻 Author
+Mahad Sultan Chaudhary
+
+GitHub: @mahadsultanchaudhary
