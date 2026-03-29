@@ -77,6 +77,11 @@ pymavlink
 psutil
 
 ArduPilot SITL
+## 🛠️ Installation
+1. Clone the repository.
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
 
 Install dependencies manually if not using the shell script:
 
@@ -84,5 +89,6 @@ Bash
 pip install pymavlink psutil
 👨‍💻 Author
 Mahad Sultan Chaudhary
+This project is demo for gsoc 2026 compeition
 
 GitHub: @mahadsultanchaudhary
