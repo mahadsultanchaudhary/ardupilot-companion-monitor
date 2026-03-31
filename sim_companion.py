@@ -2,7 +2,7 @@ from pymavlink import mavutil
 import psutil
 import time
 import os
-from typing import cast
+from typing import Any
 
 # Import your custom modules
 from logger import FlightLogger
@@ -10,7 +10,7 @@ from failsafe import FailsafeManager
 
 # --- HELPER FUNCTIONS ---
 
-def get_cpu_temp():
+def get_cpu_temp() -> float:
     """Reads the CPU temperature on Linux."""
     temps = psutil.sensors_temperatures()
     for name in ['coretemp', 'cpu_thermal', 'acpitz']:
@@ -18,17 +18,18 @@ def get_cpu_temp():
             return temps[name][0].current
     return 0.0
 
-def wait_for_ekf(master):
+def wait_for_ekf(master: Any):
     print("⏳ Waiting for GPS/EKF to settle...")
     while True:
         msg = master.recv_match(type='EKF_STATUS_REPORT', blocking=True, timeout=1)
         if msg:
-            if msg.flags & 512: # EKF_POS_HORIZ_ABS
+            # EKF_POS_HORIZ_ABS flag indicates GPS is good for flight
+            if msg.flags & 512: 
                 print("✅ EKF Ready! GPS Lock acquired.")
                 break
         time.sleep(1)
 
-def set_mode(master, mode):
+def set_mode(master: Any, mode: str):
     mode = mode.upper()
     mode_id = master.mode_mapping().get(mode)
     if mode_id is None:
@@ -37,7 +38,7 @@ def set_mode(master, mode):
     master.set_mode(mode_id)
     print(f"✅ Mode set to {mode}")
 
-def arm_drone(master):
+def arm_drone(master: Any) -> bool:
     print("🚀 Sending Arm command...")
     master.mav.command_long_send(
         master.target_system,
@@ -55,7 +56,7 @@ def arm_drone(master):
         time.sleep(0.5)
     return False
 
-def take_off(master, altitude):
+def take_off(master: Any, altitude: float):
     print(f"🛫 Takeoff initiated: target {altitude}m...")
     master.mav.command_long_send(
         master.target_system, 
@@ -75,27 +76,31 @@ def take_off(master, altitude):
 
 # --- MAIN ENGINE ---
 
-# 1. Setup Connection
-connection = cast(mavutil.mavfile, mavutil.mavlink_connection('udpin:localhost:14550'))
-print("Waiting for SITL heartbeat...")
-connection.wait_heartbeat()
-print("Connected!")
+# 1. Setup Connection on Port 14551
+connection_string = 'udpin:localhost:14551'
 
-# 2. Initialize our Portfolio Modules
+# We use Any here to stop Pylance from complaining about the specific 
+# internal mavlink classes (mavudp vs mavfile)
+master: Any = mavutil.mavlink_connection(connection_string)
+
+print("📡 Waiting for SITL heartbeat...")
+master.wait_heartbeat()
+print("✅ Connected to Flight Controller!")
+
+# 2. Initialize Portfolio Modules
 logger = FlightLogger("flight_data.csv")
 safety = FailsafeManager(cpu_threshold=95.0, temp_threshold=75.0)
 
 # 3. Prepare for Flight
-connection.recv_match(type='STATUSTEXT', blocking=False) # Clear buffer
-wait_for_ekf(connection)
+master.recv_match(type='STATUSTEXT', blocking=False) 
+wait_for_ekf(master)
 
-# 4. Execute Mission File (Modified to include logging/safety checks)
+# 4. Execute Mission File
 mission_file = "my_flight.txt"
 if os.path.exists(mission_file):
     print(f"📖 Reading {mission_file}...")
     with open(mission_file, "r") as f:
         for line in f:
-            # While processing mission, we should still monitor health
             cpu = psutil.cpu_percent()
             temp = get_cpu_temp()
             logger.log(cpu, temp, "MISSION_ACTIVE")
@@ -105,48 +110,45 @@ if os.path.exists(mission_file):
             
             action = parts[0].lower()
             if action == "mode":
-                set_mode(connection, parts[1])
+                set_mode(master, parts[1])
             elif action == "arm":
-                if not arm_drone(connection):
-                    print("Force Arming...")
-                    connection.mav.command_long_send(
-                        connection.target_system, connection.target_component,
+                if not arm_drone(master):
+                    print("⚠️ Arming failed. Sending Force Arm...")
+                    master.mav.command_long_send(
+                        master.target_system, master.target_component,
                         mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM,
                         0, 1, 21196, 0, 0, 0, 0, 0
                     )
             elif action == "takeoff":
-                take_off(connection, float(parts[1]))
+                take_off(master, float(parts[1]))
             
             time.sleep(1) 
 else:
     print(f"⚠️ {mission_file} not found.")
 
-# 5. Continuous Monitoring Loop
-print("\n--- Monitoring System Health (Logger & Failsafe Active) ---")
+# 5. Monitoring Loop
+print("\n--- 🛡️ Monitoring System Health (Failsafe Active) ---")
 try:
     while True:
-        # GATHER DATA
         cpu = psutil.cpu_percent()
         temp = get_cpu_temp()
         
-        # LOGIC: Check Failsafe
         is_dangerous, reason = safety.check_system(cpu, temp)
         status = "NORMAL"
         
         if is_dangerous:
             status = "FAILSAFE_TRIGGERED"
-            safety.trigger_rtl(connection)
-            print(f"\n🔥 {reason}")
+            safety.trigger_rtl(master)
+            print(f"\n🔥 ALERT: {reason}")
 
-        # ACTION: Log to CSV
         logger.log(cpu, temp, status)
 
-        # ACTION: Send Telemetry to ArduPilot
-        connection.mav.named_value_float_send(0, b'CPU_LOAD', cpu)
-        connection.mav.named_value_float_send(0, b'CPU_TEMP', temp)
+        # Send Telemetry to GCS/ArduPilot
+        master.mav.named_value_float_send(0, b'CPU_LOAD', cpu)
+        master.mav.named_value_float_send(0, b'CPU_TEMP', temp)
         
-        print(f"📊 CPU: {cpu}% | Temp: {temp}°C | Status: {status} ", end='\r')
+        print(f"📊 CPU: {cpu}% | Temp: {temp:.1f}°C | Status: {status} ", end='\r')
         time.sleep(1)
 
 except KeyboardInterrupt:
-    print("\nShutting down companion script...")
+    print("\n🛑 Shutting down companion script...")
