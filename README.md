@@ -15,6 +15,11 @@ Named Value Broadcast: Sends CPU_LOAD and CPU_TEMP as live telemetry streams, vi
 
 GitHub: @mahadsultanchaudhary
 
+
+
+
+
+
 # 🛸 ArduPilot Companion Monitor & Failsafe System
 
 ![Python](https://img.shields.io/badge/python-3.8+-blue.svg)
