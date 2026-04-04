@@ -116,4 +116,10 @@ pip install pymavlink psutil
 Mahad Sultan Chaudhary
 This project is demo for gsoc Ardupilot Real-Time Companion-Computer Health Monitoring & Failsafe 2026 compeition
 
+#Project Update - April 4, 2026
+##Automated Testing & Multi-Mode Integration
+The system now supports a dynamic startup sequence via start_sim.sh, allowing for headless, monitored, or full-scale simulation modes without manual configuration.
+###Feature: Flag-Based Execution The launcher now accepts arguments to control the environment complexity:
+Default: Runs SITL and Companion Script in headless mode (perfect for server-side testing).  --map: Launches the SITL native map for real-time path visualization.  --qgc: Automatically opens QGroundControl and connects via MAVLink.  --fullmode: Enables the complete stack (SITL + Map + QGC + Companion Monitor).  # Feature: Autonomous Stress Injection A new stress.py module has been integrated into the workflow. It is designed to:  Trigger automatically via the shell script during the flight mission.  Spike CPU usage to 100% across all cores for a 7-second duration.  Validate the FailsafeManager logic by forcing an emergency RTL (Return to Launch) when system resources are exhausted.  # Feature: Enhanced MAVLink Telemetry The companion script now acts as a dedicated MAVLink Component (ID 191).  Heartbeat Protocol: Ensures the companion computer is recognized by QGroundControl.  Named Value Broadcast: Sends CPU_LOAD and CPU_TEMP as live telemetry streams, viewable in the QGC MAVLink Inspector.
+
 GitHub: @mahadsultanchaudhary
