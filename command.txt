@@ -5,3 +5,12 @@ chmod +x start_sim.sh
 
 Run it:
 ./start_sim.sh
+
+new features
+./start_sim.sh (Headless/Default)
+
+./start_sim.sh --map
+
+./start_sim.sh --qgc
+
+./start_sim.sh --fullmode
