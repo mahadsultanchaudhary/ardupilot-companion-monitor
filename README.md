@@ -46,8 +46,6 @@ Designed to demonstrate **failure detection, safety-first response, and reproduc
 
 # 🧠 System Logic
 
-The system follows a **safety-first monitoring approach**:
-
 ### CPU-Based Failsafe
 
 * CPU > threshold detected
@@ -78,6 +76,38 @@ start_sim.sh  →  SITL + Companion Script
                         ↓
                  Logging (CSV + Terminal)
 ```
+
+---
+
+# 🛠️ Installation & Setup
+
+This project is designed to be **Zero-Config**. The orchestration script automatically handles environment setup and dependencies.
+
+## 1. Prerequisites
+
+Ensure you have the ArduPilot SITL environment installed in your home directory :
+
+```bash
+~/ardupilot
+```
+
+---
+
+## 2. One-Click Start
+
+Give execution permission and run:
+
+```bash
+chmod +x start_sim.sh
+./start_sim.sh --fullmode
+```
+
+👉 The script will automatically:
+
+* create a `.venv`
+* install required dependencies (`pymavlink`, `psutil`, `pexpect`)
+* launch the SITL simulation
+* start the companion monitoring system
 
 ---
 
@@ -156,7 +186,7 @@ The system can simulate **100% CPU load automatically**, triggering failsafe beh
 This allows:
 
 * deterministic testing
-* repeatable results
+* repeatable validation
 * reliable demonstration of RTL logic
 
 ---
@@ -166,8 +196,6 @@ This allows:
 ```bash
 python stress.py
 ```
-
-Used in earlier demo version for manual validation.
 
 ---
 
@@ -189,10 +217,7 @@ Used in earlier demo version for manual validation.
   * new log file is created
   * older logs are removed
 
-👉 Ensures:
-
-* long-running stability
-* no storage overflow
+👉 Ensures long-running stability without storage overflow
 
 ---
 
@@ -207,7 +232,7 @@ Real-time terminal output includes:
 
 Example:
 
-```
+```text
 [INFO] CPU: 96%
 [WARNING] High CPU detected (3s)
 [CRITICAL] Threshold exceeded (5s)
@@ -221,7 +246,7 @@ Example:
 * Simulate **companion-computer behavior** in drones
 * Demonstrate **failure detection and recovery**
 * Provide a **reproducible testing environment**
-* Bridge gap between **simulation and real deployment systems**
+* Bridge simulation with real-world deployment concepts
 
 ---
 
@@ -244,7 +269,4 @@ GSoC 2026 Applicant – ArduPilot
 
 # ⭐ Final Note
 
-This project focuses on **reliability, safety, and automation**, demonstrating how a companion computer can detect failures and respond intelligently in real-time.
-
----
-
+This project emphasizes **reliability, safety, and automation**, showcasing how a companion computer can intelligently detect failures and respond in real time.
