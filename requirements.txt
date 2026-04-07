@@ -1,2 +1,10 @@
-pymavlink>=2.4.41
-psutil>=5.9.0
+# --- Core Dependencies ---
+psutil          # For CPU and Temperature monitoring
+pymavlink       # For MAVLink communication with the drone
+
+# --- Simulation & Testing ---
+pexpect         # Required by sim_vehicle.py to manage SITL
+pytest          # For your unit tests (which you already have passing!)
+
+# --- Optional/Extras ---
+# matplotlib    # Uncomment if you want to graph your flight_data.csv later

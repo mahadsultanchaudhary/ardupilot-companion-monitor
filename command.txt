@@ -4,13 +4,23 @@ Run this in your terminal once:
 chmod +x start_sim.sh
 
 Run it:
-./start_sim.sh
+./start_sim.sh (Headless)
+./start_sim.sh --map (sitl map version)
+./start_sim.sh --qgc (qgc version no map)
 
-new features
-./start_sim.sh (Headless/Default)
+2. Advanced Testing Modes
 
-./start_sim.sh --map
+You can append flags to customize the session:
 
-./start_sim.sh --qgc
+With Stress Test: 
 
-./start_sim.sh --fullmode
+./start_sim.sh --stress (Triggers the CPU spike 100s after start).
+
+./start_sim.sh --map --stress (it would run sitl plus map and stress test for it as well)
+
+./start_sim.sh --qgc --stress (it will run qgc sitl communication and stress test for it )
+
+Full Suite: ./start_sim.sh --fullmode (Enables Map, QGC, and the Stress Test).
+
+
+
